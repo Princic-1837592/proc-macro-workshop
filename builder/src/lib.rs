@@ -65,9 +65,9 @@ fn builder_struct(fields: &FieldsAndAttrs, ident: &Ident, builder_ident: Ident) 
         }
 
         impl #builder_ident {
-            fn build(&mut self) -> std::result::Result<#ident, std::boxed::Box<dyn std::error::Error>> {
+            fn build(&mut self) -> ::std::result::Result<#ident, ::std::boxed::Box<dyn ::std::error::Error>> {
                 #(#none_checks)*
-                std::result::Result::Ok(
+                ::std::result::Result::Ok(
                     #ident {
                         #(#unwraps,)*
                     }
@@ -137,11 +137,11 @@ fn defaults(fields_attrs: &FieldsAndAttrs) -> TokenStream {
         let name = &f.ident;
         if is_vec(attr) {
             quote_spanned! {
-                f.span() => #name: std::vec::Vec::new()
+                f.span() => #name: ::std::vec::Vec::new()
             }
         } else {
             quote_spanned! {
-                f.span() => #name: std::option::Option::None
+                f.span() => #name: ::std::option::Option::None
             }
         }
     });
@@ -177,7 +177,7 @@ fn none_checks(fields: &FieldsAndAttrs) -> Vec<TokenStream> {
                 let err = format!("{} was not set", name);
                 Some(quote_spanned!(
                     f.span() => if self.#name.is_none() {
-                        return std::result::Result::Err(#err.to_owned().into());
+                        return ::std::result::Result::Err(#err.to_owned().into());
                     }
                 ))
             }
@@ -197,7 +197,7 @@ fn option_wrapped(fields: &FieldsAndAttrs) -> Vec<TokenStream> {
                 }
             } else {
                 quote_spanned! {
-                    f.span() => #name: std::option::Option<#ty>
+                    f.span() => #name: ::std::option::Option<#ty>
                 }
             }
         })
@@ -228,7 +228,7 @@ fn setters(fields: &FieldsAndAttrs) -> Vec<TokenStream> {
                 };
                 quote_spanned! {
                     f.span() => fn #name(&mut self, #name: #actual_ty) -> &mut Self {
-                        self.#name = std::option::Option::Some(#name);
+                        self.#name = ::std::option::Option::Some(#name);
                         self
                     }
                 }
