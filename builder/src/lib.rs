@@ -9,7 +9,7 @@ use syn::{
 #[derive(ParseAttributes, Clone, Debug, Default)]
 #[deluxe(attributes(builder))]
 struct BuilderAttributes {
-    optional: Option<bool>,
+    optional: Option<()>,
     each: Option<String>,
 }
 
@@ -83,7 +83,7 @@ fn is_optional(attr: &MaybeAttr) -> bool {
     matches!(
         attr,
         Ok(BuilderAttributes {
-            optional: Some(true),
+            optional: Some(_),
             ..
         })
     )

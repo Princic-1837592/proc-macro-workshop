@@ -59,7 +59,7 @@ pub struct Command {
     executable: String,
     args: Vec<String>,
     env: Vec<String>,
-    #[builder(optional = true)]
+    #[builder(optional)]
     current_dir: Option<String>,
 }
 
