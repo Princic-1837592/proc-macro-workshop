@@ -22,6 +22,7 @@ pub struct Command {
     #[builder(eac = "arg")]
     args: Vec<String>,
     env: Vec<String>,
+    #[builder(optional = true)]
     current_dir: Option<String>,
 }
 

@@ -37,6 +37,7 @@ pub struct Command {
     args: Vec<String>,
     #[builder(each = "env")]
     env: Vec<String>,
+    #[builder(optional = true)]
     current_dir: Option<String>,
 }
 
