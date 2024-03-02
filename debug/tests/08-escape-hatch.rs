@@ -27,21 +27,29 @@
 //         normal: U,
 //     }
 
-use derive_debug::CustomDebug;
 use std::fmt::Debug;
+
+use derive_debug::CustomDebug;
 
 pub trait Trait {
     type Value;
 }
 
 #[derive(CustomDebug)]
-#[debug(bound = "T::Value: Debug")]
-pub struct Wrapper<T: Trait> {
+#[debug(bound("T::Value"), unbound("T"))]
+pub struct Wrapper<T>
+where
+    T: Trait,
+{
     field: Field<T>,
 }
 
 #[derive(CustomDebug)]
-struct Field<T: Trait> {
+#[debug(bound("T::Value"), unbound("T"))]
+struct Field<T>
+where
+    T: Trait,
+{
     values: Vec<T::Value>,
 }
 

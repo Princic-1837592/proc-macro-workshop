@@ -19,15 +19,20 @@
 //   - The relevant types in the input will be represented in this syntax tree
 //     node: https://docs.rs/syn/2.0/syn/struct.TypePath.html
 
-use derive_debug::CustomDebug;
 use std::fmt::Debug;
+
+use derive_debug::CustomDebug;
 
 pub trait Trait {
     type Value;
 }
 
 #[derive(CustomDebug)]
-pub struct Field<T: Trait> {
+#[debug(bound("T::Value"), unbound("T"))]
+pub struct Field<T>
+where
+    T: Trait,
+{
     values: Vec<T::Value>,
 }
 

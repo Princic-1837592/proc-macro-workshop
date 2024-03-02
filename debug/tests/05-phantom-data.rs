@@ -55,6 +55,7 @@ use derive_debug::CustomDebug;
 type S = String;
 
 #[derive(CustomDebug)]
+#[debug(unbound("T"))]
 pub struct Field<T> {
     marker: PhantomData<T>,
     string: S,
