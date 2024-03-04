@@ -64,11 +64,19 @@ impl VisitMut for MatchSorted {
         }) {
             match_expr.attrs.remove(a);
             if let Some(a) = match_expr.arms.iter().position(|arm| {
-                !matches!(arm.pat, Pat::Path(_) | Pat::Struct(_) | Pat::TupleStruct(_))
+                !matches!(
+                    arm.pat,
+                    Pat::Path(_)
+                        | Pat::Struct(_)
+                        | Pat::TupleStruct(_)
+                        | Pat::Ident(_)
+                        | Pat::Wild(_)
+                )
             }) {
-                let err = Error::new(match_expr.arms[0].pat.span(), "unsupported by #[sorted]")
+                let err = Error::new(match_expr.arms[a].pat.span(), "unsupported by #[sorted]")
                     .to_compile_error();
                 match_expr.arms[a].body = Box::new(parse_quote!(#err));
+                return;
             }
             let arms: Vec<_> = match_expr.arms.clone().into_iter().enumerate().collect();
             let mut sorted = arms.clone();
@@ -80,10 +88,19 @@ impl VisitMut for MatchSorted {
                 }};
             }
             sorted.sort_by(|(_, l), (_, r)| match (&l.pat, &r.pat) {
+                (Pat::Wild(_), _) => Ordering::Greater,
+                (_, Pat::Wild(_)) => Ordering::Less,
                 (Pat::Path(l), Pat::Path(r)) => cmp!(l, r),
                 (Pat::Struct(l), Pat::Struct(r)) => cmp!(l, r),
                 (Pat::TupleStruct(l), Pat::TupleStruct(r)) => cmp!(l, r),
-                (_, _) => Ordering::Less,
+                (Pat::Ident(ident), other) => vec![&ident.ident].cmp(&match other {
+                    Pat::Path(item) => item.path.segments.iter().map(|s| &s.ident).collect(),
+                    Pat::Struct(item) => item.path.segments.iter().map(|s| &s.ident).collect(),
+                    Pat::TupleStruct(item) => item.path.segments.iter().map(|s| &s.ident).collect(),
+                    Pat::Ident(ident) => vec![&ident.ident],
+                    _ => unimplemented!("Unsupported arm type"),
+                }),
+                (_, _) => unimplemented!("Unsupported arm type"),
             });
             for ((o, original), (s, sorted)) in arms.iter().zip(&sorted) {
                 if o != s {
@@ -111,6 +128,8 @@ fn extract_span(variant: &Pat) -> Span {
         Pat::Path(item) => item.path.span(),
         Pat::Struct(item) => item.path.span(),
         Pat::TupleStruct(item) => item.path.span(),
+        Pat::Ident(item) => item.ident.span(),
+        Pat::Wild(item) => item.span(),
         _ => unimplemented!(),
     }
 }
@@ -120,6 +139,8 @@ fn path_to_string(variant: &Pat) -> String {
         Pat::Path(item) => &item.path,
         Pat::Struct(item) => &item.path,
         Pat::TupleStruct(item) => &item.path,
+        Pat::Ident(item) => return item.ident.to_string(),
+        Pat::Wild(_) => return "_".to_string(),
         _ => unimplemented!(),
     };
     let mut result = String::new();
