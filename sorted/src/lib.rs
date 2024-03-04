@@ -1,6 +1,11 @@
+use std::cmp::Ordering;
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, Error, Item};
+use syn::{
+    parse_macro_input, parse_quote, spanned::Spanned, visit_mut, visit_mut::VisitMut, Error,
+    ExprMatch, Item, ItemFn, Meta, Pat, Path,
+};
 
 #[proc_macro_attribute]
 pub fn sorted(
@@ -35,4 +40,97 @@ fn delegate_sorted(input: Item) -> syn::Result<TokenStream> {
             "expected enum or match expression",
         ))
     }
+}
+
+#[proc_macro_attribute]
+pub fn check(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let mut item = parse_macro_input!(input as ItemFn);
+    MatchSorted.visit_item_fn_mut(&mut item);
+    quote!(#item).into()
+}
+
+struct MatchSorted;
+
+impl VisitMut for MatchSorted {
+    fn visit_expr_match_mut(&mut self, match_expr: &mut ExprMatch) {
+        if let Some(a) = match_expr.attrs.iter().position(|attr| match &attr.meta {
+            Meta::Path(Path { segments, .. }) => {
+                segments.len() == 1 && segments[0].ident == "sorted"
+            }
+            _ => false,
+        }) {
+            match_expr.attrs.remove(a);
+            if let Some(a) = match_expr.arms.iter().position(|arm| {
+                !matches!(arm.pat, Pat::Path(_) | Pat::Struct(_) | Pat::TupleStruct(_))
+            }) {
+                let err = Error::new(match_expr.arms[0].pat.span(), "unsupported by #[sorted]")
+                    .to_compile_error();
+                match_expr.arms[a].body = Box::new(parse_quote!(#err));
+            }
+            let arms: Vec<_> = match_expr.arms.clone().into_iter().enumerate().collect();
+            let mut sorted = arms.clone();
+            macro_rules! cmp {
+                ($l:ident, $r:ident) => {{
+                    let l: Vec<_> = $l.path.segments.iter().map(|s| &s.ident).collect();
+                    let r: Vec<_> = $r.path.segments.iter().map(|s| &s.ident).collect();
+                    l.cmp(&r)
+                }};
+            }
+            sorted.sort_by(|(_, l), (_, r)| match (&l.pat, &r.pat) {
+                (Pat::Path(l), Pat::Path(r)) => cmp!(l, r),
+                (Pat::Struct(l), Pat::Struct(r)) => cmp!(l, r),
+                (Pat::TupleStruct(l), Pat::TupleStruct(r)) => cmp!(l, r),
+                (_, _) => Ordering::Less,
+            });
+            for ((o, original), (s, sorted)) in arms.iter().zip(&sorted) {
+                if o != s {
+                    let (original_pat, sorted_pat) = (&original.pat, &sorted.pat);
+                    let err = Error::new(
+                        extract_span(&match_expr.arms[*s].pat),
+                        format!(
+                            "{} should sort before {}",
+                            path_to_string(sorted_pat),
+                            path_to_string(original_pat),
+                        ),
+                    )
+                    .to_compile_error();
+                    match_expr.arms[*s].body = Box::new(parse_quote!(#err));
+                    break;
+                }
+            }
+        }
+        visit_mut::visit_expr_match_mut(self, match_expr);
+    }
+}
+
+fn extract_span(variant: &Pat) -> Span {
+    match variant {
+        Pat::Path(item) => item.path.span(),
+        Pat::Struct(item) => item.path.span(),
+        Pat::TupleStruct(item) => item.path.span(),
+        _ => unimplemented!(),
+    }
+}
+
+fn path_to_string(variant: &Pat) -> String {
+    let path = match variant {
+        Pat::Path(item) => &item.path,
+        Pat::Struct(item) => &item.path,
+        Pat::TupleStruct(item) => &item.path,
+        _ => unimplemented!(),
+    };
+    let mut result = String::new();
+    if path.leading_colon.is_some() {
+        result.push_str("::");
+    }
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i > 0 {
+            result.push_str("::");
+        }
+        result.push_str(&segment.ident.to_string());
+    }
+    result
 }
