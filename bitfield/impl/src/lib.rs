@@ -1,17 +1,13 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{ImplGenerics, Item, parse_macro_input, Type, TypeGenerics, WhereClause};
+use syn::{parse_macro_input, ImplGenerics, Item, Type, TypeGenerics, WhereClause};
 
 #[proc_macro_attribute]
 pub fn bitfield(
     _: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    expand(parse_macro_input!(input as Item)).into()
-}
-
-fn expand(item: Item) -> TokenStream {
-    match item {
+    match parse_macro_input!(input as Item) {
         Item::Struct(syn::ItemStruct {
             attrs,
             vis,
@@ -28,7 +24,7 @@ fn expand(item: Item) -> TokenStream {
                 .map(|f| f.ident.unwrap())
                 .collect();
             let field_types: Vec<_> = fields.named.clone().into_iter().map(|f| f.ty).collect();
-            let total_bits = quote!((#(<#field_types as ::bitfield::Specifier>::BITS)+*));
+            let total_bits = quote!((0 + #(<#field_types as ::bitfield::Specifier>::BITS)+*));
             let total_bytes = quote!(#total_bits / 8 + if #total_bits % 8 == 0 { 0 } else { 1 });
             let get_set = get_set(
                 &field_names,
@@ -48,6 +44,7 @@ fn expand(item: Item) -> TokenStream {
 
                 impl #impl_generics #ident #ty_generics #where_clause {
                     fn new() -> Self {
+                        let _: ::bitfield::checks::TotalSize::<[(); #total_bits % 8]>;
                         Self {
                             data: [0; #total_bytes]
                         }
@@ -59,6 +56,7 @@ fn expand(item: Item) -> TokenStream {
         }
         _ => unimplemented!(),
     }
+    .into()
 }
 
 fn get_set(
@@ -78,19 +76,17 @@ fn get_set(
         offsets.push(quote!(#prev + <#field_type as ::bitfield::Specifier>::BITS));
     }
     quote!(
-        const _: () ={
-            impl #impl_generics #ident #ty_generics #where_clause {
-                #(
-                    pub fn #gets(&self) -> <#field_types as ::bitfield::Specifier>::T {
-                        <#field_types as ::bitfield::Specifier>::get::<{#offsets}, {#total_bytes}>(&self.data)
-                    }
+        impl #impl_generics #ident #ty_generics #where_clause {
+            #(
+                pub fn #gets(&self) -> <#field_types as ::bitfield::Specifier>::T {
+                    <#field_types as ::bitfield::Specifier>::get::<{#offsets}, {#total_bytes}>(&self.data)
+                }
 
-                    pub fn #sets(&mut self, value: <#field_types as ::bitfield::Specifier>::T) {
-                        <#field_types as ::bitfield::Specifier>::set::<{#offsets}, {#total_bytes}>(&mut self.data, value);
-                    }
-                )*
-            }
-        };
+                pub fn #sets(&mut self, value: <#field_types as ::bitfield::Specifier>::T) {
+                    <#field_types as ::bitfield::Specifier>::set::<{#offsets}, {#total_bytes}>(&mut self.data, value);
+                }
+            )*
+        }
     )
 }
 
@@ -173,7 +169,7 @@ pub fn generate_private_specifier(_: proc_macro::TokenStream) -> proc_macro::Tok
                             | (right >> (8 - OFFSET % 8))
                     }
                 }
-                
+
                 fn set<const ACTUAL_BITS: usize, const OFFSET: usize, const SIZE: usize>(
                     bytes: &mut [u8],
                     value: <Self as PrivateSpecifier>::T,
@@ -210,5 +206,5 @@ pub fn generate_private_specifier(_: proc_macro::TokenStream) -> proc_macro::Tok
             }
         )*
     )
-        .into()
+    .into()
 }

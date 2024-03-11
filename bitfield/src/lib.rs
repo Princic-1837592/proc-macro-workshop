@@ -13,6 +13,8 @@
 use bitfield_impl::generate_private_specifier;
 pub use bitfield_impl::{bitfield, generate_specifier};
 
+pub mod checks;
+
 pub trait Specifier {
     const BITS: usize;
     type T;
