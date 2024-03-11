@@ -235,12 +235,6 @@ fn derive_wrapped(
             "Variants with fields are not supported",
         ));
     }
-    if let Some(invalid) = variants.iter().find(|v| v.discriminant.is_none()) {
-        return Err(Error::new(
-            invalid.span(),
-            "All fields must have a discriminant",
-        ));
-    }
     if variants.len().count_ones() != 1 || variants.len() == 1 {
         return Err(Error::new(
             Span::call_site(),

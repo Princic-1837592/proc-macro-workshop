@@ -1,4 +1,4 @@
-error: BitfieldSpecifier expected a number of variants which is a power of 2
+error: The number of variants must be a power of 2 and greater than 1
   --> tests/08-non-power-of-two.rs:10:10
    |
 10 | #[derive(BitfieldSpecifier)]
