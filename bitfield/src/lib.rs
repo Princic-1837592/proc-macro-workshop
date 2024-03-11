@@ -11,7 +11,7 @@
 // From the perspective of a user of this crate, they get all the necessary APIs
 // (macro, trait, struct) through the one bitfield crate.
 use bitfield_impl::generate_private_specifier;
-pub use bitfield_impl::{bitfield, generate_specifier};
+pub use bitfield_impl::{bitfield, generate_specifier, BitfieldSpecifier};
 
 pub mod checks;
 
