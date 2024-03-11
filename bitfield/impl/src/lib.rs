@@ -175,7 +175,7 @@ pub fn generate_private_specifier(_: proc_macro::TokenStream) -> proc_macro::Tok
                     value: <Self as PrivateSpecifier>::T,
                 ) {
                     if OFFSET % 8 == 0 {
-                        let len = 8.min(SIZE - (OFFSET / 8));
+                        let len = ::std::mem::size_of::<Self>().min(SIZE - (OFFSET / 8));
                         let old = <Self as PrivateSpecifier>::get::<OFFSET, SIZE>(bytes);
                         let mask = if ACTUAL_BITS == <Self as PrivateSpecifier>::BITS {
                             0
@@ -186,17 +186,19 @@ pub fn generate_private_specifier(_: proc_macro::TokenStream) -> proc_macro::Tok
                         bytes[OFFSET / 8..OFFSET / 8 + len].copy_from_slice(&new.to_be_bytes()[..len]);
                     } else {
                         let start_right = OFFSET / 8 + 1;
-                        let len = ::std::mem::size_of::<Self>().min(SIZE - start_right);
-                        let old =
-                            Self::from_be_bytes(bytes[start_right..start_right + len].try_into().unwrap());
-                        let actual_bits = ACTUAL_BITS - (8 - OFFSET % 8);
-                        let mask = if actual_bits == <Self as PrivateSpecifier>::BITS {
-                            0
-                        } else {
-                            Self::MAX >> actual_bits
-                        };
-                        let new = (value << (8 - OFFSET % 8)) | (old & mask);
-                        bytes[start_right..start_right + len].copy_from_slice(&new.to_be_bytes()[..len]);
+                        if ACTUAL_BITS > 8 - OFFSET % 8 {
+                            let len = ::std::mem::size_of::<Self>().min(SIZE - start_right);
+                            let old =
+                                Self::from_be_bytes(bytes[start_right..start_right + len].try_into().unwrap());
+                            let actual_bits = ACTUAL_BITS - (8 - OFFSET % 8);
+                            let mask = if actual_bits == <Self as PrivateSpecifier>::BITS {
+                                0
+                            } else {
+                                Self::MAX >> actual_bits
+                            };
+                            let new = (value << (8 - OFFSET % 8)) | (old & mask);
+                            bytes[start_right..start_right + len].copy_from_slice(&new.to_be_bytes()[..len]);
+                        }
                         let left = (value >> (::std::mem::size_of::<Self>() * 8 - 8 + OFFSET % 8)) as u8;
                         let old_left = bytes[OFFSET / 8];
                         let mask = u8::MAX << (8 - OFFSET % 8);
