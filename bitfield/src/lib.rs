@@ -38,6 +38,22 @@ trait PrivateSpecifier {
 
 generate_specifier!();
 
+impl Specifier for bool {
+    const BITS: usize = 1;
+    type T = bool;
+
+    fn get<const OFFSET: usize, const SIZE: usize>(bytes: &[u8]) -> <Self as Specifier>::T {
+        <B1 as Specifier>::get::<OFFSET, SIZE>(bytes) != 0
+    }
+
+    fn set<const OFFSET: usize, const SIZE: usize>(
+        bytes: &mut [u8],
+        value: <Self as Specifier>::T,
+    ) {
+        <B1 as Specifier>::set::<OFFSET, SIZE>(bytes, if value { 1 } else { 0 });
+    }
+}
+
 generate_private_specifier!();
 
 /*impl<T> Specifier for T
