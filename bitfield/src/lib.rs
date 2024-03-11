@@ -10,10 +10,51 @@
 //
 // From the perspective of a user of this crate, they get all the necessary APIs
 // (macro, trait, struct) through the one bitfield crate.
-pub use bitfield_impl::{bitfield, generate_bs};
+use bitfield_impl::generate_private_specifier;
+pub use bitfield_impl::{bitfield, generate_specifier};
 
 pub trait Specifier {
     const BITS: usize;
+    type T;
+
+    fn get<const OFFSET: usize, const SIZE: usize>(bytes: &[u8]) -> <Self as Specifier>::T;
+
+    fn set<const OFFSET: usize, const SIZE: usize>(bytes: &mut [u8], value: <Self as Specifier>::T);
 }
 
-generate_bs!();
+trait PrivateSpecifier {
+    const BITS: usize;
+    type T;
+
+    fn get<const OFFSET: usize, const SIZE: usize>(bytes: &[u8]) -> <Self as PrivateSpecifier>::T;
+
+    fn set<const ACTUAL_BITS: usize, const OFFSET: usize, const SIZE: usize>(
+        bytes: &mut [u8],
+        value: <Self as PrivateSpecifier>::T,
+    );
+}
+
+generate_specifier!();
+
+generate_private_specifier!();
+
+/*impl<T> Specifier for T
+where
+    T: PrivateSpecifier + Sized,
+{
+    const BITS: usize = <T as PrivateSpecifier>::BITS;
+    type T = <T as PrivateSpecifier>::T;
+
+    fn get<const OFFSET: usize, const SIZE: usize>(bytes: &[u8]) -> <Self as Specifier>::T {
+        <Self as PrivateSpecifier>::get::<OFFSET, SIZE>(bytes)
+    }
+
+    fn set<const OFFSET: usize, const SIZE: usize>(
+        bytes: &mut [u8],
+        value: <Self as Specifier>::T,
+    ) {
+        <Self as PrivateSpecifier>::set::<{ <Self as Specifier>::BITS }, OFFSET, SIZE>(
+            bytes, value,
+        )
+    }
+}*/
