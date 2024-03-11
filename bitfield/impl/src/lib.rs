@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
     parse_macro_input, spanned::Spanned, Error, Fields, ImplGenerics, Item, ItemEnum, Type,
     TypeGenerics, WhereClause,
@@ -244,18 +244,23 @@ fn derive_wrapped(
     let bits = variants.len().ilog2() as usize;
     let b_type = format_ident!("B{}", bits);
     let u_type = to_u_type(bits);
-    let variants = variants.into_iter().map(|v| v.ident);
+    let variants: Vec<_> = variants.into_iter().map(|v| v.ident).collect();
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let discriminant_checks = discriminant_checks(&ident, &variants);
     Ok(quote!(
+
+        #discriminant_checks
+
         impl #impl_generics ::bitfield::Specifier for #ident #ty_generics #where_clause {
             const BITS: usize = #bits;
             type T = Self;
 
             fn get<const OFFSET: usize, const SIZE: usize>(bytes: &[u8]) -> <Self as Specifier>::T {
-                use #ident::*;
                 fn from_integer(num: #u_type) -> #ident {
+                    use #ident::*;
                     [#((#variants as #u_type, #variants)),*].into_iter().find_map(|(u, e)| if u == num { Some(e) } else { None }).unwrap()
                 }
+
                 from_integer(<::bitfield::#b_type as ::bitfield::Specifier>::get::<OFFSET, SIZE>(bytes))
             }
 
@@ -264,4 +269,19 @@ fn derive_wrapped(
             }
         }
     ))
+}
+
+fn discriminant_checks(ident: &Ident, variants: &[Ident]) -> TokenStream {
+    let n_variants = variants.len();
+    let checks = variants.iter().map(|v| {
+        quote_spanned!(
+            v.span() => let _: ::bitfield::checks::Discriminant::<[(); ((#v as usize) < #n_variants) as usize]>;
+        )
+    });
+    quote!(
+        const _: () = {
+            use #ident::*;
+            #(#checks;)*
+        };
+    )
 }

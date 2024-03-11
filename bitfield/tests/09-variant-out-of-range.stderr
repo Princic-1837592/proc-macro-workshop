@@ -1,15 +1,15 @@
-error[E0277]: the trait bound `bitfield::checks::False: bitfield::checks::DiscriminantInRange` is not satisfied
+error[E0277]: the trait bound `checks::False: checks::DiscriminantInRange` is not satisfied
   --> tests/09-variant-out-of-range.rs:17:5
    |
 17 |     External,
-   |     ^^^^^^^^ the trait `bitfield::checks::DiscriminantInRange` is not implemented for `bitfield::checks::False`
+   |     ^^^^^^^^ the trait `checks::DiscriminantInRange` is not implemented for `checks::False`
    |
-   = help: the trait `bitfield::checks::DiscriminantInRange` is implemented for `bitfield::checks::True`
-
-error: could not evaluate constant pattern
- --> tests/09-variant-out-of-range.rs:8:10
-  |
-8 | #[derive(BitfieldSpecifier)]
-  |          ^^^^^^^^^^^^^^^^^
-  |
-  = note: this error originates in the derive macro `BitfieldSpecifier` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = help: the trait `checks::DiscriminantInRange` is implemented for `True`
+note: required by a bound in `bitfield::checks::Discriminant`
+  --> src/checks.rs
+   |
+   | pub struct Discriminant<T>(PhantomData<T>)
+   |            ------------ required by a bound in this struct
+...
+   |     <T as DiscriminantInRangeRenameType>::CheckType: DiscriminantInRange;
+   |                                                      ^^^^^^^^^^^^^^^^^^^ required by this bound in `Discriminant`
