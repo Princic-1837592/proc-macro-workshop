@@ -1,7 +1,7 @@
 use proc_macro::TokenStream as TokenStream1;
 use proc_macro2::Ident;
 use quote::format_ident;
-use syn::{parse_macro_input, spanned::Spanned, Item, ItemEnum};
+use syn::{parse_macro_input, Item, ItemEnum};
 
 mod bitfield;
 mod derive;

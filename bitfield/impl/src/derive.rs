@@ -64,7 +64,7 @@ fn discriminant_checks(ident: &Ident, variants: &[Ident]) -> TokenStream {
     quote!(
         const _: () = {
             use #ident::*;
-            #(#checks;)*
+            #(#checks)*
         };
     )
 }
