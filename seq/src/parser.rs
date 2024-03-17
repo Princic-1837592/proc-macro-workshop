@@ -31,11 +31,21 @@ pub(crate) fn next_keyword(iter: &mut IntoIter, keyword: &str) -> syn::Result<()
 
 pub(crate) fn next_value(iter: &mut IntoIter) -> syn::Result<(u64, Span)> {
     let token = next(iter)?;
-    if let TokenTree::Literal(lit) = &token {
-        if let Ok(value) = lit.to_string().parse::<u64>() {
-            return Ok((value, lit.span()));
+    match &token {
+        TokenTree::Literal(lit) => {
+            if let Ok(value) = lit.to_string().parse::<u64>() {
+                return Ok((value, lit.span()));
+            }
         }
-    }
+        TokenTree::Group(group) if group.delimiter() == Delimiter::None => {
+            if let Some(TokenTree::Literal(lit)) = group.stream().into_iter().next() {
+                if let Ok(value) = lit.to_string().parse::<u64>() {
+                    return Ok((value, lit.span()));
+                }
+            }
+        }
+        _ => {}
+    };
     Err(Error::new(token.span(), "expected numeric literal"))
 }
 
