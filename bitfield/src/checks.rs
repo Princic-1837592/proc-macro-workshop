@@ -15,7 +15,7 @@ where
 macro_rules! impl_total_size_for {
     ($(($n:expr, $name:ident $(, $vis:tt)?)),*) => {
         $(
-            $($vis)? enum $name {}
+            $($vis)? struct $name;
 
             impl TotalSizeRenameType for [(); $n] {
                 type CheckType = $name;
@@ -49,13 +49,13 @@ where
     T: DiscriminantInRangeRenameType,
     <T as DiscriminantInRangeRenameType>::CheckType: DiscriminantInRange;
 
-enum False {}
+struct False;
 
 impl DiscriminantInRangeRenameType for [(); false as usize] {
     type CheckType = False;
 }
 
-pub enum True {}
+pub struct True;
 
 impl DiscriminantInRangeRenameType for [(); true as usize] {
     type CheckType = True;
